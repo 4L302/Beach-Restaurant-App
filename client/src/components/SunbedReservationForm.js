@@ -16,6 +16,9 @@ const SunbedReservationForm = () => {
     { value: 'vip_lounger', label: 'VIP Lounger' },
   ];
 
+  // Get today's date in YYYY-MM-DD format for min attribute of date input
+  const today = new Date().toISOString().split('T')[0];
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -29,7 +32,10 @@ const SunbedReservationForm = () => {
       setError('All fields are required.');
       return;
     }
-    // TODO: Add date validation (e.g., not in the past)
+    if (new Date(reservationDate) < new Date(today)) {
+        setError('Reservations cannot be made for past dates.');
+        return;
+    }
 
     try {
       const payload = {
@@ -37,14 +43,12 @@ const SunbedReservationForm = () => {
         type: 'sunbed',
         reservation_date: reservationDate,
         sunbed_type: sunbedType,
-        // reservation_time and num_people are not applicable here for this simplified version
       };
       const response = await apiClient.post('/reservations', payload);
       setSuccess('Sunbed reservation successful! Confirmation ID: ' + response.data.id);
       // Clear form
       setReservationDate('');
       setSunbedType('');
-      // TODO: Optionally redirect or update a list of user's reservations
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
@@ -56,12 +60,12 @@ const SunbedReservationForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <p className="text-red-500 text-sm text-center p-2 bg-red-100 rounded-md">{error}</p>}
-      {success && <p className="text-green-600 text-sm text-center p-2 bg-green-100 rounded-md">{success}</p>}
+    <form onSubmit={handleSubmit}>
+      {error && <p className="alert alert-danger mt-3">{error}</p>}
+      {success && <p className="alert alert-success mt-3">{success}</p>}
 
-      <div>
-        <label htmlFor="reservationDateSunbed" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-3">
+        <label htmlFor="reservationDateSunbed" className="form-label">
           Date
         </label>
         <input
@@ -69,20 +73,21 @@ const SunbedReservationForm = () => {
           id="reservationDateSunbed"
           value={reservationDate}
           onChange={(e) => setReservationDate(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="form-control"
+          min={today} // Prevent selecting past dates
           required
         />
       </div>
 
-      <div>
-        <label htmlFor="sunbedType" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-3">
+        <label htmlFor="sunbedType" className="form-label">
           Sunbed Type
         </label>
         <select
           id="sunbedType"
           value={sunbedType}
           onChange={(e) => setSunbedType(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="form-select"
           required
         >
           <option value="" disabled>Select a sunbed type</option>
@@ -92,10 +97,10 @@ const SunbedReservationForm = () => {
         </select>
       </div>
 
-      <div>
+      <div className="d-grid">
         <button
           type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500"
+          className="btn btn-info" // w-100 is not needed with d-grid on parent. Changed to btn-info
         >
           Book Sunbed
         </button>

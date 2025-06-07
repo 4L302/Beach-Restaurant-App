@@ -24,69 +24,86 @@ const MenuPage = () => {
         fetchDishes();
     }, []);
 
-    const fishDishes = allDishes.filter(dish => dish.category && dish.category.toLowerCase() === 'fish');
-    const meatDishes = allDishes.filter(dish => dish.category && dish.category.toLowerCase() === 'meat');
-    // Optional: handle dishes with other categories or no category
-    const otherDishes = allDishes.filter(dish => dish.category && dish.category.toLowerCase() !== 'fish' && dish.category.toLowerCase() !== 'meat');
-
+    // Categorize dishes - ensuring category exists and is a string before toLowerCase()
+    const fishDishes = allDishes.filter(dish => dish.category && typeof dish.category === 'string' && dish.category.toLowerCase() === 'fish');
+    const meatDishes = allDishes.filter(dish => dish.category && typeof dish.category === 'string' && dish.category.toLowerCase() === 'meat');
+    const otherDishes = allDishes.filter(dish =>
+        dish.category && typeof dish.category === 'string' &&
+        dish.category.toLowerCase() !== 'fish' &&
+        dish.category.toLowerCase() !== 'meat'
+    );
 
     if (loading) {
-        return <div className="text-center py-10">Loading menu...</div>;
+        return (
+            <div className="container text-center py-5">
+                <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                </div>
+                <p className="lead mt-2">Loading menu...</p>
+            </div>
+        );
     }
 
     if (error) {
-        return <div className="text-center py-10 text-red-500">{error}</div>;
+        return (
+            <div className="container py-5">
+                <div className="alert alert-danger text-center">{error}</div>
+            </div>
+        );
     }
 
     return (
-        <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            <h1 className="text-4xl font-bold text-center text-gray-800 my-8">Our Menu</h1>
+        <div className="container py-4">
+            <h1 className="text-center display-4 fw-bold my-5">Our Menu</h1>
 
-            {/* Seafood Section */}
             {fishDishes.length > 0 && (
-                <section className="mb-12">
-                    <h2 className="text-3xl font-semibold text-blue-700 mb-6 border-b-2 border-blue-300 pb-2">
+                <section className="mb-5">
+                    <h2 className="h2 text-info mb-4 border-bottom pb-2">
                         Seafood Delights
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div className="row">
                         {fishDishes.map(dish => (
-                            <DishCard key={dish.id} dish={dish} />
+                            <div key={dish.id} className="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                                <DishCard dish={dish} />
+                            </div>
                         ))}
                     </div>
                 </section>
             )}
 
-            {/* Land/Meat Section */}
             {meatDishes.length > 0 && (
-                <section className="mb-12">
-                    <h2 className="text-3xl font-semibold text-red-700 mb-6 border-b-2 border-red-300 pb-2">
+                <section className="mb-5">
+                    <h2 className="h2 text-danger mb-4 border-bottom pb-2">
                         From the Land
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div className="row">
                         {meatDishes.map(dish => (
-                            <DishCard key={dish.id} dish={dish} />
+                            <div key={dish.id} className="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                                <DishCard dish={dish} />
+                            </div>
                         ))}
                     </div>
                 </section>
             )}
 
-            {/* Other Dishes Section (Optional) */}
             {otherDishes.length > 0 && (
-                 <section className="mb-12">
-                    <h2 className="text-3xl font-semibold text-gray-700 mb-6 border-b-2 border-gray-300 pb-2">
+                 <section className="mb-5">
+                    <h2 className="h2 text-secondary mb-4 border-bottom pb-2">
                         More Options
                     </h2>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                    <div className="row">
                         {otherDishes.map(dish => (
-                            <DishCard key={dish.id} dish={dish} />
+                            <div key={dish.id} className="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
+                                <DishCard dish={dish} />
+                            </div>
                         ))}
                     </div>
                 </section>
             )}
 
             {allDishes.length === 0 && !loading && (
-                <div className="text-center py-10 text-gray-500">
-                    <p>No dishes available at the moment. Please check back later!</p>
+                <div className="text-center py-5">
+                    <p className="lead text-muted">No dishes available at the moment. Please check back later!</p>
                 </div>
             )}
         </div>

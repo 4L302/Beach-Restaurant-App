@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom'; // Import Link
 import apiClient from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -38,48 +38,49 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100">
-      <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-6 text-center">Login</h2>
-        {error && <p className="text-red-500 text-center mb-4">{error}</p>}
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <label htmlFor="email" className="block text-gray-700 text-sm font-bold mb-2">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-              required
-            />
-          </div>
-          <div className="mb-6">
-            <label htmlFor="password" className="block text-gray-700 text-sm font-bold mb-2">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 mb-3 leading-tight focus:outline-none focus:shadow-outline"
-              required
-            />
-          </div>
-          <div className="flex items-center justify-between">
-            <button
-              type="submit"
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline w-full"
-            >
-              Login
-            </button>
-          </div>
-          {/* Optional: Add a link to the registration page */}
-          <p className="text-center mt-4">
-            Don't have an account? <a href="/register" className="text-blue-500 hover:text-blue-700">Register here</a>
-          </p>
-        </form>
+    <div className="container-fluid d-flex justify-content-center align-items-center min-vh-100 bg-light">
+      <div className="card shadow-sm" style={{ width: '100%', maxWidth: '450px' }}>
+        <div className="card-body p-4 p-md-5">
+          <h2 className="card-title text-center h3 mb-4 fw-bold">Login</h2>
+          {error && <p className="alert alert-danger text-center">{error}</p>}
+          <form onSubmit={handleSubmit}>
+            <div className="mb-3">
+              <label htmlFor="email" className="form-label">Email Address</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="form-control"
+                required
+              />
+            </div>
+            <div className="mb-3"> {/* Changed mb-6 to mb-3 for Bootstrap consistency */}
+              <label htmlFor="password" className="form-label">Password</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="form-control" // Removed mb-3 from here as parent div has it
+                required
+              />
+            </div>
+            <div className="d-grid"> {/* Use d-grid for full-width button */}
+              <button
+                type="submit"
+                className="btn btn-primary btn-lg" // Added btn-lg for a larger button
+              >
+                Login
+              </button>
+            </div>
+            <p className="text-center mt-3"> {/* Bootstrap margin utility */}
+              Don't have an account? <Link to="/register">Register here</Link> {/* Used Link component */}
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );

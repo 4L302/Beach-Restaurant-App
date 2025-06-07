@@ -12,6 +12,10 @@ const TableReservationForm = () => {
 
   const timeSlots = ["Breakfast", "Lunch", "Aperitivo", "Dinner"]; // As per prenotazioni.html
 
+  // Get today's date in YYYY-MM-DD format for min attribute of date input
+  const today = new Date().toISOString().split('T')[0];
+
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -29,8 +33,10 @@ const TableReservationForm = () => {
         setError('Number of people must be at least 1.');
         return;
     }
-
-    // TODO: Add date validation (e.g., not in the past)
+    if (new Date(reservationDate) < new Date(today)) {
+        setError('Reservations cannot be made for past dates.');
+        return;
+    }
 
     try {
       const payload = {
@@ -46,7 +52,6 @@ const TableReservationForm = () => {
       setReservationDate('');
       setReservationTime('');
       setNumPeople(1);
-      // TODO: Optionally redirect or update a list of user's reservations
     } catch (err) {
       if (err.response && err.response.data && err.response.data.message) {
         setError(err.response.data.message);
@@ -58,12 +63,12 @@ const TableReservationForm = () => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
-      {error && <p className="text-red-500 text-sm text-center p-2 bg-red-100 rounded-md">{error}</p>}
-      {success && <p className="text-green-600 text-sm text-center p-2 bg-green-100 rounded-md">{success}</p>}
+    <form onSubmit={handleSubmit}>
+      {error && <p className="alert alert-danger mt-3">{error}</p>}
+      {success && <p className="alert alert-success mt-3">{success}</p>}
 
-      <div>
-        <label htmlFor="reservationDateTable" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-3">
+        <label htmlFor="reservationDateTable" className="form-label">
           Date
         </label>
         <input
@@ -71,20 +76,21 @@ const TableReservationForm = () => {
           id="reservationDateTable"
           value={reservationDate}
           onChange={(e) => setReservationDate(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="form-control"
+          min={today} // Prevent selecting past dates
           required
         />
       </div>
 
-      <div>
-        <label htmlFor="reservationTimeTable" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-3">
+        <label htmlFor="reservationTimeTable" className="form-label">
           Time Slot
         </label>
         <select
           id="reservationTimeTable"
           value={reservationTime}
           onChange={(e) => setReservationTime(e.target.value)}
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="form-select"
           required
         >
           <option value="" disabled>Select a time slot</option>
@@ -94,8 +100,8 @@ const TableReservationForm = () => {
         </select>
       </div>
 
-      <div>
-        <label htmlFor="numPeople" className="block text-sm font-medium text-gray-700 mb-1">
+      <div className="mb-3">
+        <label htmlFor="numPeople" className="form-label">
           Number of People
         </label>
         <input
@@ -104,15 +110,15 @@ const TableReservationForm = () => {
           value={numPeople}
           onChange={(e) => setNumPeople(e.target.value)}
           min="1"
-          className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          className="form-control"
           required
         />
       </div>
 
-      <div>
+      <div className="d-grid"> {/* Use d-grid for full-width button */}
         <button
           type="submit"
-          className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+          className="btn btn-primary" // w-100 is not needed with d-grid on parent
         >
           Book Table
         </button>

@@ -12,32 +12,67 @@ const Navbar = () => {
     };
 
     return (
-        <nav className="bg-gray-800 text-white p-4 shadow-md">
-            <div className="container mx-auto flex flex-wrap justify-between items-center">
-                <Link to="/" className="text-xl font-bold hover:text-gray-300">RestaurantLido</Link>
-
-                <div className="space-x-4 flex items-center mt-2 sm:mt-0">
-                    <Link to="/" className="hover:text-gray-300">Home</Link>
-                    <Link to="/menu" className="hover:text-gray-300">Menu</Link>
-
-                    {isAuthenticated ? (
-                        <>
-                            <Link to="/reservations" className="hover:text-gray-300">Book</Link>
-                            <Link to="/my-reservations" className="hover:text-gray-300">My Bookings</Link>
-                            {user && <span className="text-gray-400 hidden md:inline">Hi, {user.name}!</span>}
-                            <button
-                                onClick={handleLogout}
-                                className="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-3 rounded text-sm focus:outline-none focus:shadow-outline"
-                            >
-                                Logout
-                            </button>
-                        </>
-                    ) : (
-                        <>
-                            <Link to="/login" className="hover:text-gray-300">Login</Link>
-                            <Link to="/register" className="hover:text-gray-300">Register</Link>
-                        </>
-                    )}
+        <nav className="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+            <div className="container-fluid">
+                <Link to="/" className="navbar-brand">RestaurantLido</Link>
+                <button
+                    className="navbar-toggler"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#navbarNav"
+                    aria-controls="navbarNav"
+                    aria-expanded="false"
+                    aria-label="Toggle navigation"
+                >
+                    <span className="navbar-toggler-icon"></span>
+                </button>
+                <div className="collapse navbar-collapse" id="navbarNav">
+                    <ul className="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li className="nav-item">
+                            <Link to="/" className="nav-link">Home</Link>
+                        </li>
+                        <li className="nav-item">
+                            <Link to="/menu" className="nav-link">Menu</Link>
+                        </li>
+                        {isAuthenticated && (
+                            <>
+                                <li className="nav-item">
+                                    <Link to="/reservations" className="nav-link">Book</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link to="/my-reservations" className="nav-link">My Bookings</Link>
+                                </li>
+                            </>
+                        )}
+                    </ul>
+                    <ul className="navbar-nav ms-auto mb-2 mb-lg-0">
+                        {isAuthenticated ? (
+                            <>
+                                {user && (
+                                    <li className="nav-item">
+                                        <span className="navbar-text me-2">Hi, {user.name}!</span>
+                                    </li>
+                                )}
+                                <li className="nav-item">
+                                    <button
+                                        onClick={handleLogout}
+                                        className="btn btn-danger btn-sm"
+                                    >
+                                        Logout
+                                    </button>
+                                </li>
+                            </>
+                        ) : (
+                            <>
+                                <li className="nav-item">
+                                    <Link to="/login" className="nav-link">Login</Link>
+                                </li>
+                                <li className="nav-item">
+                                    <Link to="/register" className="nav-link">Register</Link>
+                                </li>
+                            </>
+                        )}
+                    </ul>
                 </div>
             </div>
         </nav>

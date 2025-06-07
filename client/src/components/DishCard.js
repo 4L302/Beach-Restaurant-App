@@ -8,18 +8,18 @@ const DishCard = ({ dish }) => {
   return (
     <Link
       to={`/menu/dish/${dish.id}`}
-      className="bg-white rounded-xl shadow-lg overflow-hidden hover:shadow-2xl transition-shadow duration-300 ease-in-out"
+      className="card text-decoration-none h-100 shadow-sm"
     >
       <img
         src={imageUrl}
         alt={dish.name}
-        className="w-full h-48 object-cover" // Fixed height for uniformity
+        className="card-img-top"
+        style={{ height: '200px', objectFit: 'cover' }} // Preserving image style
       />
-      <div className="p-4">
-        <h3 className="text-xl font-semibold text-gray-800 mb-1 truncate">{dish.name}</h3>
-        <p className="text-lg font-bold text-green-600 mb-2">${dish.price.toFixed(2)}</p>
-        {/* Optional: Short description or ingredients preview */}
-        {dish.description && <p className="text-sm text-gray-600 truncate">{dish.description}</p>}
+      <div className="card-body d-flex flex-column">
+        <h5 className="card-title mb-1 text-truncate">{dish.name}</h5>
+        <p className="card-text fw-bold text-success mb-2">${dish.price.toFixed(2)}</p>
+        {dish.description && <p className="card-text text-muted small text-truncate">{dish.description}</p>}
       </div>
     </Link>
   );
