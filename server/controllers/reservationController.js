@@ -1,45 +1,74 @@
 const db = require('../database'); // Shared DB instance
 const { runQuery, getQuery, allQuery } = require('../utils/dbHelpers'); // Import helpers
 
-// TODO: Implement actual availability logic for tables/sunbeds
-// TODO: Integrate JWT authentication: user_id should come from req.user.id
-// TODO: Implement role-based access for fetching/updating/deleting reservations
+// TODO: Implement detailed availability logic. This should consider:
+// 1. Restaurant operating hours.
+// 2. Capacity for table types / number of sunbeds.
+// 3. Existing reservations for the requested date/time slot.
+// 4. Potentially, buffer times between reservations.
+// 5. This check needs to be integrated into createReservation and updateReservation.
+// TODO: Implement role-based access for fetching/updating/deleting reservations (admin override)
+
+// Helper function for validating reservation data
+const getReservationValidationIssue = (data) => {
+    const { type, reservation_date, reservation_time, num_people, sunbed_type } = data;
+
+    if (!type || !reservation_date) {
+        return 'Type and reservation_date are required.';
+    }
+    if (type !== 'table' && type !== 'sunbed') {
+        return "Type must be 'table' or 'sunbed'.";
+    }
+
+    if (type === 'table') {
+        if (!reservation_time) {
+            return 'Reservation_time is required for table reservations.';
+        }
+        if (num_people === undefined || num_people === null || parseInt(num_people, 10) < 1) {
+            return 'Number of people (num_people) must be a positive integer (>= 1) for table reservations.';
+        }
+    } else if (type === 'sunbed') {
+        if (!sunbed_type) {
+            return 'Sunbed type (sunbed_type) is required for sunbed reservations.';
+        }
+    }
+    return null; // No validation issues
+};
+
 
 const createReservation = async (req, res) => {
-    let { user_id, type, reservation_date, reservation_time, num_people, sunbed_type } = req.body;
+    let { type, reservation_date, reservation_time, num_people, sunbed_type } = req.body;
+    const userIdFromToken = req.user.userId;
 
-    if (!user_id) {
-        return res.status(400).json({ message: 'user_id is required.' });
-    }
-    if (!type || !reservation_date || !reservation_time && type === 'table') { // time is only strictly required for table
-        return res.status(400).json({ message: 'Type, reservation_date, and reservation_time (for table) are required.' });
-    }
-     if (!type || !reservation_date && type === 'sunbed') { // time is not required for sunbed
-        return res.status(400).json({ message: 'Type and reservation_date are required for sunbed.' });
+    if (!userIdFromToken) {
+        return res.status(401).json({ message: 'User not authenticated.' });
     }
 
-
-    if (type !== 'table' && type !== 'sunbed') {
-        return res.status(400).json({ message: "Type must be 'table' or 'sunbed'." });
+    // Initial data for validation
+    const validationData = { type, reservation_date, reservation_time, num_people, sunbed_type };
+    const validationError = getReservationValidationIssue(validationData);
+    if (validationError) {
+        return res.status(400).json({ message: validationError });
     }
 
-    if (type === 'table' && (num_people === undefined || num_people === null || num_people < 1)) {
-        return res.status(400).json({ message: 'Number of people (num_people) is required for table reservations and must be at least 1.' });
-    } else if (type === 'table') {
+    // Adjust data based on type AFTER validation
+    if (type === 'table') {
         sunbed_type = null;
-    }
-
-    if (type === 'sunbed' && !sunbed_type) {
-        return res.status(400).json({ message: 'Sunbed type (sunbed_type) is required for sunbed reservations.' });
     } else if (type === 'sunbed') {
         num_people = null;
-        reservation_time = reservation_time || 'All Day'; // Default time for sunbeds if not provided
+        reservation_time = reservation_time || 'All Day';
     }
+
+    // TODO: Check for availability before creating the reservation
+    // const isAvailable = await checkAvailability({ type, reservation_date, reservation_time, num_people, sunbed_type /*, existing_reservation_id: null for create */ });
+    // if (!isAvailable) {
+    //   return res.status(409).json({ message: 'The selected time/slot is not available.' });
+    // }
 
     const sql = `INSERT INTO reservations (user_id, type, reservation_date, reservation_time, num_people, sunbed_type)
                  VALUES (?, ?, ?, ?, ?, ?)`;
     try {
-        const result = await runQuery(db, sql, [user_id, type, reservation_date, reservation_time, num_people, sunbed_type]);
+        const result = await runQuery(db, sql, [userIdFromToken, type, reservation_date, reservation_time, num_people, sunbed_type]);
         const createdReservation = await getQuery(db, 'SELECT * FROM reservations WHERE id = ?', [result.lastID]);
         res.status(201).json(createdReservation);
     } catch (error) {
@@ -49,25 +78,18 @@ const createReservation = async (req, res) => {
 };
 
 const getReservations = async (req, res) => {
-    const { user_id, type } = req.query;
-    let sql = 'SELECT * FROM reservations';
-    const params = [];
-    const conditions = [];
+    const userIdFromToken = req.user.userId;
+    const { type } = req.query;
 
-    if (user_id) {
-        conditions.push('user_id = ?');
-        params.push(user_id);
-    }
+    let sql = 'SELECT * FROM reservations WHERE user_id = ?';
+    const params = [userIdFromToken];
+
     if (type) {
         if (type !== 'table' && type !== 'sunbed') {
             return res.status(400).json({ message: "Type query parameter must be 'table' or 'sunbed'."});
         }
-        conditions.push('type = ?');
+        sql += ' AND type = ?';
         params.push(type);
-    }
-
-    if (conditions.length > 0) {
-        sql += ' WHERE ' + conditions.join(' AND ');
     }
 
     try {
@@ -81,10 +103,14 @@ const getReservations = async (req, res) => {
 
 const getReservationById = async (req, res) => {
     const { id } = req.params;
+    const userIdFromToken = req.user.userId;
     const sql = 'SELECT * FROM reservations WHERE id = ?';
     try {
         const reservation = await getQuery(db, sql, [id]);
         if (!reservation) {
+            return res.status(404).json({ message: 'Reservation not found.' });
+        }
+        if (reservation.user_id !== userIdFromToken) {
             return res.status(404).json({ message: 'Reservation not found.' });
         }
         res.status(200).json(reservation);
@@ -95,60 +121,76 @@ const getReservationById = async (req, res) => {
 };
 
 const updateReservation = async (req, res) => {
-    const { id } = req.params;
-    const { user_id, type, reservation_date, reservation_time, num_people, sunbed_type } = req.body;
+    const { id } = req.params; // Reservation ID
+    const userIdFromToken = req.user.userId;
+    const bodyData = req.body;
 
-    if (!type && !reservation_date && !reservation_time && !num_people && !sunbed_type && !user_id) {
+    if (Object.keys(bodyData).length === 0) {
         return res.status(400).json({ message: 'At least one field must be provided for update.' });
     }
-    if (type && type !== 'table' && type !== 'sunbed') {
-        return res.status(400).json({ message: "Type must be 'table' or 'sunbed'." });
+    if (bodyData.user_id !== undefined) {
+        return res.status(400).json({ message: 'Cannot change ownership (user_id) of a reservation.' });
     }
-    // ... (other validations can be more specific based on what's being updated)
 
     try {
         const existingReservation = await getQuery(db, 'SELECT * FROM reservations WHERE id = ?', [id]);
         if (!existingReservation) {
-            return res.status(404).json({ message: 'Reservation not found to update.' });
+            return res.status(404).json({ message: 'Reservation not found.' });
+        }
+        if (existingReservation.user_id !== userIdFromToken) {
+            return res.status(404).json({ message: 'Reservation not found.' }); // Or 403 Forbidden
         }
 
-        const new_user_id = user_id !== undefined ? user_id : existingReservation.user_id;
-        let new_type = type !== undefined ? type : existingReservation.type;
-        const new_reservation_date = reservation_date !== undefined ? reservation_date : existingReservation.reservation_date;
-        let new_reservation_time = reservation_time !== undefined ? reservation_time : existingReservation.reservation_time;
+        // Construct the full updatedData object
+        const updatedData = {
+            type: bodyData.type !== undefined ? bodyData.type : existingReservation.type,
+            reservation_date: bodyData.reservation_date !== undefined ? bodyData.reservation_date : existingReservation.reservation_date,
+            reservation_time: bodyData.reservation_time !== undefined ? bodyData.reservation_time : existingReservation.reservation_time,
+            num_people: bodyData.num_people !== undefined ? bodyData.num_people : existingReservation.num_people,
+            sunbed_type: bodyData.sunbed_type !== undefined ? bodyData.sunbed_type : existingReservation.sunbed_type,
+        };
 
-        let new_num_people = num_people !== undefined ? num_people : existingReservation.num_people;
-        let new_sunbed_type = sunbed_type !== undefined ? sunbed_type : existingReservation.sunbed_type;
-
-        if (new_type === 'table') {
-            if (new_num_people === undefined || new_num_people === null || new_num_people < 1) {
-                 // If type is changing to 'table' or already 'table', num_people must be valid
-                 if(type || existingReservation.type === 'table'){ // check if type is explicitly set or was already table
-                    return res.status(400).json({ message: 'Number of people (num_people) is required and must be at least 1 for table reservations.' });
-                 }
+        // Explicitly set fields to null or default based on the *final* type
+        if (updatedData.type === 'table') {
+            updatedData.sunbed_type = null;
+        } else if (updatedData.type === 'sunbed') {
+            updatedData.num_people = null;
+            // Only default reservation_time if it was not provided in body and is falsey from existing
+            if (bodyData.reservation_time === undefined && !existingReservation.reservation_time) {
+                 updatedData.reservation_time = 'All Day';
+            } else if (bodyData.reservation_time === null || bodyData.reservation_time === '') { // if explicitly set to null or empty
+                 updatedData.reservation_time = 'All Day';
             }
-            new_sunbed_type = null;
-            if(new_reservation_time === undefined && (type || existingReservation.type === 'table')) { // if type is table, time is required
-                 return res.status(400).json({ message: 'Reservation time is required for table reservations.'});
-            }
-        } else if (new_type === 'sunbed') {
-             if (new_sunbed_type === undefined || new_sunbed_type === null || new_sunbed_type === '') {
-                 if(type || existingReservation.type === 'sunbed'){
-                    return res.status(400).json({ message: 'Sunbed type (sunbed_type) is required for sunbed reservations.' });
-                 }
-            }
-            new_num_people = null;
-            new_reservation_time = new_reservation_time || 'All Day'; // Default if not provided for sunbed
         }
+
+        const validationError = getReservationValidationIssue(updatedData);
+        if (validationError) {
+            return res.status(400).json({ message: validationError });
+        }
+
+        // TODO: Check for availability before updating the reservation, especially if date/time/type/num_people changed.
+        // Pass existingReservation.id to exclude it from conflict checks if a simple time slot change.
+        // const isAvailable = await checkAvailability({ ...updatedData, existing_reservation_id: existingReservation.id });
+        // if (!isAvailable) {
+        //   return res.status(409).json({ message: 'The new selected time/slot is not available.' });
+        // }
 
         const sql_update = `UPDATE reservations SET
-                        user_id = ?, type = ?, reservation_date = ?, reservation_time = ?,
+                        type = ?, reservation_date = ?, reservation_time = ?,
                         num_people = ?, sunbed_type = ?
-                     WHERE id = ?`;
-        await runQuery(db, sql_update, [new_user_id, new_type, new_reservation_date, new_reservation_time, new_num_people, new_sunbed_type, id]);
+                     WHERE id = ? AND user_id = ?`;
+        await runQuery(db, sql_update, [
+            updatedData.type,
+            updatedData.reservation_date,
+            updatedData.reservation_time,
+            updatedData.num_people,
+            updatedData.sunbed_type,
+            id,
+            userIdFromToken
+        ]);
 
-        const updatedReservation = await getQuery(db, 'SELECT * FROM reservations WHERE id = ?', [id]);
-        res.status(200).json(updatedReservation);
+        const finalUpdatedReservation = await getQuery(db, 'SELECT * FROM reservations WHERE id = ?', [id]);
+        res.status(200).json(finalUpdatedReservation);
     } catch (error) {
         console.error('Error updating reservation:', error.message);
         res.status(500).json({ message: 'Server error updating reservation.', error: error.message });
@@ -157,16 +199,21 @@ const updateReservation = async (req, res) => {
 
 const deleteReservation = async (req, res) => {
     const { id } = req.params;
+    const userIdFromToken = req.user.userId;
     try {
-        const existingReservation = await getQuery(db, 'SELECT * FROM reservations WHERE id = ?', [id]);
+        const existingReservation = await getQuery(db, 'SELECT user_id FROM reservations WHERE id = ?', [id]);
         if (!existingReservation) {
-            return res.status(404).json({ message: 'Reservation not found to delete.' });
+            return res.status(404).json({ message: 'Reservation not found.' });
         }
-        const sql_delete = 'DELETE FROM reservations WHERE id = ?';
-        const result = await runQuery(db, sql_delete, [id]);
+        if (existingReservation.user_id !== userIdFromToken) {
+            return res.status(404).json({ message: 'Reservation not found.' });
+        }
+
+        const sql_delete = 'DELETE FROM reservations WHERE id = ? AND user_id = ?';
+        const result = await runQuery(db, sql_delete, [id, userIdFromToken]);
 
         if (result.changes === 0) {
-            return res.status(404).json({ message: 'Reservation not found or no changes made.' });
+            return res.status(404).json({ message: 'Reservation not found or not authorized to delete.' });
         }
         res.status(200).json({ message: 'Reservation deleted successfully.' });
     } catch (error) {

@@ -12,94 +12,117 @@ const MyReservationsPage = () => {
   useEffect(() => {
     if (!isAuthenticated || !user || !user.id || !token) {
       setLoading(false);
-      return; // Should be handled by the Navigate component, but good for safety
+      return;
     }
 
     const fetchReservations = async () => {
       setLoading(true);
       setError('');
       try {
-        // Ensure Authorization header is set for this request if not globally set or if it was cleared.
-        // AuthContext's useEffect should handle this, but being explicit can be safer.
         const config = {
           headers: { Authorization: `Bearer ${token}` },
           params: { user_id: user.id }
         };
         const response = await apiClient.get('/reservations', config);
-        setReservations(response.data.sort((a, b) => new Date(b.reservation_date) - new Date(a.reservation_date))); // Sort by date desc
+        setReservations(response.data.sort((a, b) => new Date(b.reservation_date) - new Date(a.reservation_date)));
       } catch (err) {
         console.error('Error fetching user reservations:', err);
-        setError('Failed to load your reservations. Please try again later.');
+        if (err.response && err.response.status === 401) {
+             setError('Your session has expired. Please log in again.');
+             // Consider calling logout() here or redirecting to login
+        } else {
+            setError('Failed to load your reservations. Please try again later.');
+        }
       } finally {
         setLoading(false);
       }
     };
 
     fetchReservations();
-  }, [isAuthenticated, user, token]); // Depend on user and token to refetch if they change
+  }, [isAuthenticated, user, token]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
 
   if (loading) {
-    return <div className="text-center py-10">Loading your reservations...</div>;
+    return (
+        <div className="container text-center py-5">
+            <div className="spinner-border text-primary" role="status">
+                <span className="visually-hidden">Loading...</span>
+            </div>
+            <p className="lead mt-2">Loading your reservations...</p>
+        </div>
+    );
   }
 
   if (error) {
-    return <div className="text-center py-10 text-red-500">{error}</div>;
+    return (
+        <div className="container py-5">
+            <div className="alert alert-danger text-center" role="alert">{error}</div>
+        </div>
+    );
   }
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    });
+    const options = { year: 'numeric', month: 'long', day: 'numeric' };
+    // Ensure date is treated as UTC to avoid off-by-one day errors due to timezone conversion
+    const date = new Date(dateString + 'T00:00:00Z');
+    return date.toLocaleDateString('en-US', options);
   };
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      <h1 className="text-3xl font-bold text-center text-gray-800 my-6">My Reservations</h1>
+    <div className="container py-4 py-md-5">
+      <h1 className="display-5 text-center my-4 fw-bold">My Reservations</h1>
 
       {reservations.length === 0 ? (
-        <div className="text-center py-10">
-          <p className="text-gray-600 text-lg mb-4">You have no reservations yet.</p>
+        <div className="text-center py-5">
+          <p className="lead text-muted mb-4">You have no reservations yet.</p>
           <Link
             to="/reservations"
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors duration-300"
+            className="btn btn-primary btn-lg d-block mx-auto"
+            style={{maxWidth: '300px'}}
           >
             Make a Reservation
           </Link>
         </div>
       ) : (
-        <div className="space-y-6 max-w-3xl mx-auto">
+        <div style={{ maxWidth: '768px' }} className="mx-auto">
           {reservations.map(res => (
-            <div key={res.id} className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-xl transition-shadow duration-300">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3">
-                <h2 className="text-2xl font-semibold text-blue-600 capitalize">
+            <div key={res.id} className="card shadow-sm mb-4">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h5 className={`mb-0 text-capitalize ${res.type === 'table' ? 'text-primary' : 'text-info'}`}>
                   {res.type} Reservation
-                </h2>
-                <span className={`px-3 py-1 text-sm font-medium rounded-full
-                  ${res.type === 'table' ? 'bg-green-100 text-green-700' : 'bg-purple-100 text-purple-700'}`}>
-                  ID: {res.id}
-                </span>
+                </h5>
+                <span className="badge bg-secondary">ID: {res.id}</span>
               </div>
+              <div className="card-body">
+                <dl className="row mb-0"> {/* mb-0 to remove default dl margin if any */}
+                  <dt className="col-sm-4">Date:</dt>
+                  <dd className="col-sm-8">{formatDate(res.reservation_date)}</dd>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-gray-700">
-                <p><strong className="font-medium">Date:</strong> {formatDate(res.reservation_date)}</p>
-                {res.type === 'table' && (
-                  <>
-                    <p><strong className="font-medium">Time:</strong> {res.reservation_time}</p>
-                    <p><strong className="font-medium">Guests:</strong> {res.num_people}</p>
-                  </>
-                )}
-                {res.type === 'sunbed' && (
-                  <p><strong className="font-medium">Type:</strong> <span className="capitalize">{res.sunbed_type.replace('_', ' ')}</span></p>
-                )}
+                  {res.type === 'table' && (
+                    <>
+                      <dt className="col-sm-4">Time:</dt>
+                      <dd className="col-sm-8">{res.reservation_time}</dd>
+                      <dt className="col-sm-4">Guests:</dt>
+                      <dd className="col-sm-8">{res.num_people}</dd>
+                    </>
+                  )}
+                  {res.type === 'sunbed' && (
+                    <>
+                      <dt className="col-sm-4">Type:</dt>
+                      <dd className="col-sm-8 text-capitalize">{res.sunbed_type ? res.sunbed_type.replace('_', ' ') : 'N/A'}</dd>
+                    </>
+                  )}
+                </dl>
+                {/* TODO: Add Cancel button for upcoming reservations */}
+                {/*
+                <div className="mt-3 text-end">
+                  <button className="btn btn-outline-danger btn-sm">Cancel Reservation</button>
+                </div>
+                */}
               </div>
-              {/* TODO: Add Cancel button for upcoming reservations in a future enhancement */}
-              {/* <div className="mt-4 text-right">
-                <button className="text-red-500 hover:text-red-700 font-medium">Cancel</button>
-              </div> */}
             </div>
           ))}
         </div>

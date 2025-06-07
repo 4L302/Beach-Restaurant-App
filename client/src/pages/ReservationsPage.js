@@ -1,55 +1,61 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { Navigate } from 'react-router-dom';
-import TableReservationForm from '../components/TableReservationForm'; // Import actual component
-import SunbedReservationForm from '../components/SunbedReservationForm'; // Import actual component
+import TableReservationForm from '../components/TableReservationForm';
+import SunbedReservationForm from '../components/SunbedReservationForm';
 
 const ReservationsPage = () => {
   const { isAuthenticated } = useAuth();
   const [reservationType, setReservationType] = useState('table'); // 'table' or 'sunbed'
 
   if (!isAuthenticated) {
-    // It's good practice to use `replace` to prevent the login page from being added to history
-    // if the user tries to access a protected route directly.
     return <Navigate to="/login" replace />;
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-      <h1 className="text-3xl font-bold text-center text-gray-800 my-6">Make a Reservation</h1>
+    <div className="container py-4 py-md-5">
+      <h1 className="display-5 text-center my-4 fw-bold">Make a Reservation</h1>
 
-      <div className="flex justify-center mb-8 shadow rounded-lg">
-        <button
-          onClick={() => setReservationType('table')}
-          className={`flex-1 px-4 py-3 sm:px-6 font-semibold rounded-l-lg transition-colors duration-300 focus:outline-none
-                        ${reservationType === 'table'
-                            ? 'bg-blue-600 text-white shadow-inner'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-        >
-          Book a Table
-        </button>
-        <button
-          onClick={() => setReservationType('sunbed')}
-          className={`flex-1 px-4 py-3 sm:px-6 font-semibold rounded-r-lg transition-colors duration-300 focus:outline-none
-                        ${reservationType === 'sunbed'
-                            ? 'bg-teal-600 text-white shadow-inner'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'}`}
-        >
-          Book a Sunbed
-        </button>
-      </div>
+      <ul className="nav nav-pills nav-fill mb-4 justify-content-center fs-5" id="reservationTypeTabs" role="tablist">
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${reservationType === 'table' ? 'active' : ''}`}
+            id="table-tab"
+            onClick={() => setReservationType('table')}
+            type="button"
+            role="tab"
+            aria-controls="table-form"
+            aria-selected={reservationType === 'table'}
+          >
+            Book a Table
+          </button>
+        </li>
+        <li className="nav-item" role="presentation">
+          <button
+            className={`nav-link ${reservationType === 'sunbed' ? 'active' : ''}`}
+            id="sunbed-tab"
+            onClick={() => setReservationType('sunbed')}
+            type="button"
+            role="tab"
+            aria-controls="sunbed-form"
+            aria-selected={reservationType === 'sunbed'}
+          >
+            Book a Sunbed
+          </button>
+        </li>
+      </ul>
 
-      <div className="max-w-2xl mx-auto bg-white p-6 sm:p-8 rounded-xl shadow-xl border border-gray-200">
+      <div className="card shadow-sm p-4 p-md-5 mx-auto" style={{ maxWidth: '768px' }}>
         {reservationType === 'table' ? (
-          <>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-6 text-center">Table Reservation Details</h2>
+          <div id="table-form" role="tabpanel" aria-labelledby="table-tab">
+            <h2 className="h3 text-center mb-4">Table Reservation Details</h2>
             <TableReservationForm />
-          </>
+          </div>
         ) : (
-          <>
-            <h2 className="text-2xl font-semibold text-gray-700 mb-6 text-center">Sunbed Reservation Details</h2>
+          <div id="sunbed-form" role="tabpanel" aria-labelledby="sunbed-tab">
+            <h2 className="h3 text-center mb-4">Sunbed Reservation Details</h2>
             <SunbedReservationForm />
-          </>
+          </div>
         )}
       </div>
     </div>

@@ -3,8 +3,13 @@ const jwt = require('jsonwebtoken');
 const db = require('../database'); // Import the shared db instance
 const { getQuery, runQuery } = require('../utils/dbHelpers'); // Import helpers
 
-// TODO: Move JWT_SECRET to an environment variable
-const JWT_SECRET = 'your_jwt_secret';
+const JWT_SECRET = process.env.JWT_SECRET;
+
+if (!JWT_SECRET) {
+  console.error("FATAL ERROR: JWT_SECRET is not defined in .env file");
+  // Consider exiting the process if JWT_SECRET is crucial for the app to function
+  // process.exit(1);
+}
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
