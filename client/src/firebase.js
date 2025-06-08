@@ -7,7 +7,7 @@ const firebaseConfig = {
   apiKey: "AIzaSyCz0sXB4MG76x3KiI0aAkRNKpXgazfV8Z4",
   authDomain: "restaurantlido.firebaseapp.com",
   projectId: "restaurantlido",
-  storageBucket: "restaurantlido.firebasestorage.app",
+  storageBucket: "restaurantlido.appspot.com",
   messagingSenderId: "990930763828",
   appId: "1:990930763828:web:6d0d1a1f920b7b5b03ca61",
   measurementId: "G-50Y8XJ9D6W"

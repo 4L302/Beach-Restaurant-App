@@ -6,6 +6,7 @@ const AuthContext = createContext(null);
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [token, setToken] = useState(null); // Initialize with null, useEffect will load from localStorage
+  const [isLoading, setIsLoading] = useState(true); // New loading state
 
   useEffect(() => {
     const storedUserJson = localStorage.getItem('user');
@@ -13,26 +14,26 @@ export const AuthProvider = ({ children }) => {
 
     if (storedToken) {
       apiClient.defaults.headers.common['Authorization'] = `Bearer ${storedToken}`;
-      setToken(storedToken); // Set token state
+      setToken(storedToken);
       if (storedUserJson) {
         try {
-          setUser(JSON.parse(storedUserJson)); // Set user state
+          setUser(JSON.parse(storedUserJson));
         } catch (e) {
           console.error("Error parsing stored user:", e);
-          localStorage.removeItem('user'); // Clear inconsistent storage
+          localStorage.removeItem('user');
           setUser(null);
         }
       } else {
-        // If token exists but no user, might be a partial state, clear user
         setUser(null);
       }
     } else {
-      // No token, ensure user is also cleared and no auth header
       setUser(null);
       setToken(null);
       delete apiClient.defaults.headers.common['Authorization'];
     }
-  }, []); // Runs once on mount to load initial state from localStorage
+
+    setIsLoading(false); // Loading done
+  }, []);
 
   const login = (userData, userToken) => {
     localStorage.setItem('user', JSON.stringify(userData));
@@ -48,11 +49,10 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setToken(null);
     delete apiClient.defaults.headers.common['Authorization'];
-    // Optionally, redirect or perform other cleanup
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
@@ -60,7 +60,7 @@ export const AuthProvider = ({ children }) => {
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (context === undefined) { // Check for undefined, as null is a valid initial context value
+  if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
