@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import apiClient from '../services/api';
+import { db } from '../firebase';
+import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 
 const SunbedReservationForm = () => {
   const { user } = useAuth();
   const [reservationDate, setReservationDate] = useState('');
-  const [sunbedType, setSunbedType] = useState(''); // E.g., 'standard', 'vip'
+  const [sunbedType, setSunbedType] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -16,7 +17,6 @@ const SunbedReservationForm = () => {
     { value: 'vip_lounger', label: 'VIP Lounger' },
   ];
 
-  // Get today's date in YYYY-MM-DD format for min attribute of date input
   const today = new Date().toISOString().split('T')[0];
 
   const handleSubmit = async (e) => {
@@ -24,38 +24,39 @@ const SunbedReservationForm = () => {
     setError('');
     setSuccess('');
 
-    if (!user || !user.id) {
+    if (!user || !user.uid) {
       setError('You must be logged in to make a reservation.');
       return;
     }
+
     if (!reservationDate || !sunbedType) {
       setError('All fields are required.');
       return;
     }
+
     if (new Date(reservationDate) < new Date(today)) {
-        setError('Reservations cannot be made for past dates.');
-        return;
+      setError('Reservations cannot be made for past dates.');
+      return;
     }
 
     try {
       const payload = {
-        user_id: user.id,
+        userId: user.uid,
         type: 'sunbed',
         reservation_date: reservationDate,
         sunbed_type: sunbedType,
+        createdAt: serverTimestamp()
       };
-      const response = await apiClient.post('/reservations', payload);
-      setSuccess('Sunbed reservation successful! Confirmation ID: ' + response.data.id);
-      // Clear form
+
+      const docRef = await addDoc(collection(db, 'reservations'), payload);
+      setSuccess(`Sunbed reservation successful! ID: ${docRef.id}`);
+
+      // Reset form
       setReservationDate('');
       setSunbedType('');
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Failed to make sunbed reservation. Please try again.');
-      }
-      console.error('Sunbed reservation error:', err);
+      console.error('Firestore error:', err);
+      setError('Failed to save reservation. Please try again.');
     }
   };
 
@@ -65,24 +66,20 @@ const SunbedReservationForm = () => {
       {success && <p className="alert alert-success mt-3">{success}</p>}
 
       <div className="mb-3">
-        <label htmlFor="reservationDateSunbed" className="form-label">
-          Date
-        </label>
+        <label htmlFor="reservationDateSunbed" className="form-label">Date</label>
         <input
           type="date"
           id="reservationDateSunbed"
           value={reservationDate}
           onChange={(e) => setReservationDate(e.target.value)}
           className="form-control"
-          min={today} // Prevent selecting past dates
+          min={today}
           required
         />
       </div>
 
       <div className="mb-3">
-        <label htmlFor="sunbedType" className="form-label">
-          Sunbed Type
-        </label>
+        <label htmlFor="sunbedType" className="form-label">Sunbed Type</label>
         <select
           id="sunbedType"
           value={sunbedType}
@@ -98,12 +95,7 @@ const SunbedReservationForm = () => {
       </div>
 
       <div className="d-grid">
-        <button
-          type="submit"
-          className="btn btn-info" // w-100 is not needed with d-grid on parent. Changed to btn-info
-        >
-          Book Sunbed
-        </button>
+        <button type="submit" className="btn btn-info">Book Sunbed</button>
       </div>
     </form>
   );

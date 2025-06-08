@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import apiClient from '../services/api';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 
 const LoginPage = () => {
@@ -8,7 +9,7 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const auth = useAuth();
+  const { isAuthenticated, logout, user, ...authContext } = useAuth();
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,15 +21,14 @@ const LoginPage = () => {
     }
 
     try {
-      const response = await apiClient.post('/auth/login', { email, password });
-      if (response.data?.token && response.data?.user) {
-        auth.login(response.data.user, response.data.token);
-        navigate('/');
-      } else {
-        setError('Login failed: Invalid response from server.');
-      }
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const loggedInUser = userCredential.user;
+
+      // Se hai un metodo di login nel tuo AuthContext
+      authContext.login(loggedInUser, null); // Puoi anche passare token se serve
+      navigate('/');
     } catch (err) {
-      setError(err?.response?.data?.message || 'Login failed. Please try again.');
+      setError('Login failed. Please check your credentials.');
       console.error('Login error:', err);
     }
   };
@@ -58,9 +58,9 @@ const LoginPage = () => {
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
                 <input
-                  type="text"
+                  type="email"
                   className="form-control rounded-pill px-4 py-3 border-0"
-                  placeholder="Full Name"
+                  placeholder="Email"
                   style={{ backgroundColor: '#e7f3ed', color: '#0d1b14' }}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
@@ -91,7 +91,7 @@ const LoginPage = () => {
               </div>
 
               <p className="text-center mt-3 text-success text-decoration-underline">
-                Already have an account? <Link to="/register" className="text-success">Register here</Link>
+                Don't have an account? <Link to="/register" className="text-success">Register here</Link>
               </p>
             </form>
           </div>

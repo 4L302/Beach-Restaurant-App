@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom'; // Import Link
-import apiClient from '../services/api';
-// import { useAuth } from '../contexts/AuthContext'; // Not using auth.login() on register for now
+import { Link, useNavigate } from 'react-router-dom';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 
 const RegisterPage = () => {
   const [name, setName] = useState('');
@@ -10,7 +11,6 @@ const RegisterPage = () => {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const navigate = useNavigate();
-  // const auth = useAuth(); // Get auth context if planning to log in user directly
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,21 +23,25 @@ const RegisterPage = () => {
     }
 
     try {
-      const response = await apiClient.post('/auth/register', { name, email, password });
-      setSuccess(response.data.message + ' Redirecting to login...');
-      // Optionally, you could log the user in directly if the backend returns token/user
-      // auth.login(response.data.user, response.data.token);
-      // navigate('/');
+      // 1. Crea utente Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // 2. Salva info aggiuntive nel Firestore
+      await setDoc(doc(db, 'users', user.uid), {
+        uid: user.uid,
+        name,
+        email,
+        createdAt: new Date()
+      });
+
+      setSuccess('Registration successful! Redirecting to login...');
       setTimeout(() => {
         navigate('/login');
-      }, 2000); // Redirect after 2 seconds
+      }, 2000);
     } catch (err) {
-      if (err.response && err.response.data && err.response.data.message) {
-        setError(err.response.data.message);
-      } else {
-        setError('Registration failed. Please try again.');
-      }
       console.error('Registration error:', err);
+      setError(err.message || 'Registration failed. Please try again.');
     }
   };
 
@@ -50,11 +54,10 @@ const RegisterPage = () => {
           {success && <p className="alert alert-success text-center">{success}</p>}
           <form onSubmit={handleSubmit}>
             <div className="mb-3">
-              <label htmlFor="name" className="form-label">Name</label>
+              <label htmlFor="name" className="form-label">Full Name</label>
               <input
                 type="text"
                 id="name"
-                name="name"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 className="form-control"
@@ -66,19 +69,17 @@ const RegisterPage = () => {
               <input
                 type="email"
                 id="email"
-                name="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="form-control"
                 required
               />
             </div>
-            <div className="mb-3"> {/* Changed mb-6 to mb-3 */}
+            <div className="mb-3">
               <label htmlFor="password" className="form-label">Password</label>
               <input
                 type="password"
                 id="password"
-                name="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="form-control"
